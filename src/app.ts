@@ -1,3 +1,33 @@
+//validation 
+interface Validatable {
+    value: string | number;
+    required?: boolean;
+    maxLength?: number;
+    minLength?:number;
+    max?: number;
+    min?: number  
+}
+
+function validate(validableInput: Validatable){
+    let isValid = true
+    if(validableInput.required){
+        isValid = isValid && validableInput.value.toString().trim().length !==0
+    }
+    if(validableInput.minLength != null && typeof validableInput.value === 'string'){
+       isValid = isValid && validableInput.value.length > validableInput.minLength
+    }
+    if(validableInput.maxLength != null && typeof validableInput.value === 'string'){
+        isValid = isValid && validableInput.value.length < validableInput.maxLength
+     }
+     if(validableInput.max != null && typeof validableInput.value === 'number'){
+        isValid = isValid && validableInput.value < validableInput.max
+     }
+     if(validableInput.min != null && typeof validableInput.value === 'number'){
+        isValid = isValid && validableInput.value > validableInput.min
+     }
+     return isValid
+}
+
 //autobind decorator
 function autobind(_ : any, _2:string, descriptor: PropertyDescriptor){
     const orginalMethod = descriptor.value;
@@ -34,9 +64,42 @@ class ProjectInput{
         this.attact()
     }
 
+    private genarateUserInput():[string, string, string]|void{
+        const enterTitle = this.title.value
+        const enterDescription = this.description.value
+        const enterPeople = this.people.value
+
+        const titleValidable: Validatable = {
+            value: enterTitle,
+            required:true
+        }
+        const descriptionValidable: Validatable = {
+            value: enterDescription,
+            required:true,
+            minLength:5
+        }
+        const peopleValidable: Validatable = {
+            value: enterPeople,
+            required:true,
+            min:1
+        }
+
+        if(!validate(titleValidable) 
+        || !validate(descriptionValidable) 
+        || !validate(peopleValidable) ){
+            alert("Invalid input. Please try again")
+            return
+        }
+        return [enterTitle, enterDescription, enterPeople]
+    }
+    @autobind
     private submitHandler(event: Event){
         event.preventDefault()
-        console.log(this.title.value);
+        const userInput = this.genarateUserInput()
+        if(Array.isArray(userInput)){
+            const [title, description, people] = userInput
+            console.log(title, description, people);
+        }
         
     }
 
