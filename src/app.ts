@@ -1,3 +1,56 @@
+enum ProjectStatus{
+    Active, Finished
+}
+
+class Project{
+    constructor(
+        public id:string, 
+        public title:string,
+        public description:string,
+        public numOfPeople:number,
+        public status:ProjectStatus
+    ){}
+}
+
+type Listener = (project: Project[])=>void
+//project state management
+class ProjectState{
+    private listeners:Listener[] = []
+    private projects:Project[] = []
+    private static instance:ProjectState
+
+    private constructor(){}
+
+    static getInstance(){
+        if(this.instance){
+            return this.instance
+        }
+        this.instance =  new ProjectState()
+        return this.instance
+    }
+
+    addProject(title:string, description:string, numOfPeople:number){
+        const newProject = new Project (
+            Math.random().toString(),
+            title,
+            description,
+            numOfPeople,
+            ProjectStatus.Active
+        )
+
+        this.projects.push(newProject)
+        for(const listener of this.listeners){
+            listener(this.projects.slice())
+        }
+    }
+
+    addListener(listenerFn:Listener){
+        this.listeners.push(listenerFn)
+    }
+}
+
+const projectState = ProjectState.getInstance()
+
 //validation 
 interface Validatable {
     value: string | number;
@@ -20,10 +73,10 @@ function validate(validableInput: Validatable){
         isValid = isValid && validableInput.value.length < validableInput.maxLength
      }
      if(validableInput.max != null && typeof validableInput.value === 'number'){
-        isValid = isValid && validableInput.value < validableInput.max
+        isValid = isValid && validableInput.value <= validableInput.max
      }
      if(validableInput.min != null && typeof validableInput.value === 'number'){
-        isValid = isValid && validableInput.value > validableInput.min
+        isValid = isValid && validableInput.value >= validableInput.min
      }
      return isValid
 }
@@ -45,6 +98,9 @@ class ProjectList{
     templateElement : HTMLTemplateElement
     hostElement: HTMLDivElement;
     element:HTMLElement;
+
+    asignProject:Project[] = []
+
     constructor(private type:'active'|'finished'){
         this.templateElement = document.getElementById('project-list')! as HTMLTemplateElement
         this.hostElement = document.getElementById('app')! as HTMLDivElement
@@ -53,11 +109,29 @@ class ProjectList{
 
         this.element = importedNode.firstElementChild as HTMLElement
         this.element.id = `${this.type}-projects`
-
+        projectState.addListener((projects:Project[]) => {
+            const relevantProjects = projects.filter(prj => {
+                if(this.type === 'active'){
+                    return prj.status === ProjectStatus.Active
+                }
+                return prj.status === ProjectStatus.Finished
+            })
+            this.asignProject = relevantProjects;
+            this.renderProjects()
+        })
         this.attact()
         this.renderContent()
     }
-
+    private renderProjects(){
+        const listEl = document.getElementById(`${this.type}-projects-list`) as HTMLUListElement
+        listEl.innerHTML = ''
+        for(const prjItem of this.asignProject){
+            const listItem = document.createElement('li')
+            
+            listItem.textContent = prjItem.title
+            listEl.appendChild(listItem)
+        }
+    }
     private attact(){
         this.hostElement.insertAdjacentElement('beforeend', this.element)
     }
@@ -92,7 +166,8 @@ class ProjectInput{
         this.attact()
     }
 
-    private genarateUserInput():[string, string, string]|void{
+    
+    private genarateUserInput():[string, string, number]|void{
         const enterTitle = this.title.value
         const enterDescription = this.description.value
         const enterPeople = this.people.value
@@ -118,7 +193,7 @@ class ProjectInput{
             alert("Invalid input. Please try again")
             return
         }
-        return [enterTitle, enterDescription, enterPeople]
+        return [enterTitle, enterDescription, +enterPeople]
     }
 
     private clearInputs(){
@@ -132,7 +207,7 @@ class ProjectInput{
         const userInput = this.genarateUserInput()
         if(Array.isArray(userInput)){
             const [title, description, people] = userInput
-            console.log(title, description, people);
+            projectState.addProject(title, description,people)
             this.clearInputs()
         }
         
